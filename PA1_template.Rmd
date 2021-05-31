@@ -5,21 +5,158 @@ output:
     keep_md: true
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+```
 
 ## Loading and preprocessing the data
 
+We unzip the zip file and read it in as a CSV file.
 
+```{r}
+unzip(zipfile="activity.zip")
+df<-read.csv(file="activity.csv")
+```
+
+We then explore the basic structure of the dataset.
+
+```{r}
+str(df)
+```
+
+```{r}
+summary(df)
+```
 
 ## What is mean total number of steps taken per day?
 
+Find the total number of steps taken each day, disregarding missing values.
 
+```{r}
+stepsByDay<-aggregate(formula=steps~date, data=df, FUN=sum, na.rm=TRUE)
+```
+
+Make a histogram of the total number of steps taken each day.
+
+```{r}
+library(ggplot2)
+
+g1<-ggplot(data=stepsByDay, mapping=aes(x=steps))
+plot1<-g1+geom_histogram(fill="cornflowerblue")+labs(x="Steps per day", y="Frequency", title="Histogram of the total steps each day")
+print(plot1)
+```
+
+Find the mean and median of the total number of steps per day.
+
+```{r}
+meanSteps<-mean(stepsByDay$steps)
+medianSteps<-median(stepsByDay$steps)
+
+print(paste("Mean steps:", meanSteps))
+print(paste("Median steps:", medianSteps))
+```
 
 ## What is the average daily activity pattern?
 
+Make a time series plot of the average number of steps taken in each interval, disregarding missing values.
 
+```{r}
+stepsByInterval<-aggregate(formula=steps~interval, data=df, FUN=mean, na.rm=TRUE)
+
+g2<-ggplot(data=stepsByInterval, mapping=aes(x=interval, y=steps))
+plot2<-g2+geom_line(color="seagreen")
+print(plot2)
+```
+
+Find the interval containing the maximum number of steps.
+
+```{r}
+maxInterval<-stepsByInterval[which.max(stepsByInterval$steps), ]$interval
+
+print(paste("Interval with the maximum number of steps:", maxInterval))
+```
 
 ## Imputing missing values
 
+Find the total number of rows with missing values in the dataset.
 
+```{r}
+missingTotal<-sum(is.na(df$steps))
+
+print(paste("Number of rows with missing values:", missingTotal))
+```
+
+Devise a strategy for filling in these missing values. We'll fill in a given missing value with the mean number of steps that day, where the mean is calculated from non-missing data. Here's the function to fill in an individual missing value.
+
+```{r}
+meanStepsByDay<-aggregate(formula=steps~date, data=df, FUN=mean, na.rm=TRUE)
+
+fillNA<-function(day, meanStepsByDay=meanStepsByDay) {
+        filledValue<-meanStepsByDay[meanStepsByDay$date==day, ]$steps
+        if(identical(filledValue, numeric(length=0))) {
+                return(0)
+        } else {
+                return(filledValue)
+        }
+}
+```
+
+Create a new dataset with missing values imputed.
+
+```{r}
+newDf<-df
+
+for(i in 1:nrow(newDf)) {
+        if(is.na(newDf[i, ]$steps)) { 
+                newDf[i, ]$steps<-fillNA(day=newDf[i, ]$date, meanStepsByDay=meanStepsByDay)
+        }
+}
+```
+
+Make a histogram of the total number of steps each day for the imputed dataset.
+
+```{r}
+stepsByDayImputed<-aggregate(formula=steps~date, data=newDf, FUN=sum)
+
+g3<-ggplot(data=stepsByDayImputed, mapping=aes(x=steps))
+plot3<-g3+geom_histogram(fill="mediumpurple")
+print(plot3)
+```
+
+Find the mean and median steps taken per day for the imputed dataset.
+
+```{r}
+meanStepsImputed<-mean(stepsByDayImputed$steps)
+medianStepsImputed<-median(stepsByDayImputed$steps)
+
+print(paste("Mean steps for the imputed dataset:", meanStepsImputed))
+print(paste("This mean is lesser than the original mean by:", (meanSteps-meanStepsImputed)))
+print(paste("Median steps for the imputed dataset:", medianStepsImputed))
+print(paste("This median is lesser than the original median by:", (medianSteps-medianStepsImputed)))
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Create a new factor variable indicating whether days are weekdays or weekends.
+
+```{r}
+newDf$date<-as.Date(strptime(x=newDf$date, format="%Y-%m-%d"))
+newDf$day<-weekdays(newDf$date)
+
+for(i in 1:nrow(newDf)) {
+        if(newDf[i, ]$day %in% c("Saturday", "Sunday")) {
+                newDf[i, ]$day<-"weekend"
+        } else {
+                newDf[i, ]$day<-"weekday"
+        }
+}
+```
+
+Make a time series plot showing the number of steps for weekdays and weekends.
+
+```{r}
+library(lattice)
+stepsByWeekday<-aggregate(formula=steps~interval+day, data=newDf, FUN=mean)
+xyplot(x=steps~interval|day, data=stepsByWeekday, type="l", layout=c(1, 2), xlab="Interval", ylab="Number of steps")
+```
+
