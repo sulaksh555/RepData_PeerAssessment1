@@ -64,7 +64,7 @@ Make a time series plot of the average number of steps taken in each interval, d
 stepsByInterval<-aggregate(formula=steps~interval, data=df, FUN=mean, na.rm=TRUE)
 
 g2<-ggplot(data=stepsByInterval, mapping=aes(x=interval, y=steps))
-plot2<-g2+geom_line(color="seagreen")
+plot2<-g2+geom_line(color="seagreen")+labs(x="Interval", y="Number of steps", title="Time series of steps in each interval")
 print(plot2)
 ```
 
@@ -119,7 +119,7 @@ Make a histogram of the total number of steps each day for the imputed dataset.
 stepsByDayImputed<-aggregate(formula=steps~date, data=newDf, FUN=sum)
 
 g3<-ggplot(data=stepsByDayImputed, mapping=aes(x=steps))
-plot3<-g3+geom_histogram(fill="mediumpurple")
+plot3<-g3+geom_histogram(fill="mediumpurple")+labs(x="Number of steps", y="Frequency", title="Histogram of total daily steps for imputed dataset")
 print(plot3)
 ```
 
